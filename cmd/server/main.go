@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/hamdidal/dpp-backend/internal/auth"
+	"github.com/hamdidal/dpp-backend/internal/auditlog"
 	"github.com/hamdidal/dpp-backend/internal/metrics"
 	"github.com/hamdidal/dpp-backend/internal/product"
 	"github.com/hamdidal/dpp-backend/internal/user"
@@ -90,6 +91,7 @@ func newRouter() *gin.Engine {
 	product.RegisterRoutes(api)
 	user.RegisterRoutes(api)
 	metrics.RegisterRoutes(api)
+	auditlog.RegisterRoutes(api)
 
 	return r
 }

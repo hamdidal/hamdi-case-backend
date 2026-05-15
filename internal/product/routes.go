@@ -12,6 +12,7 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 		// Read access: admin and auditor roles may browse the product catalogue.
 		products.GET("", middleware.RequireRole("admin", "auditor"), ListProducts)
 		products.GET("/:id", middleware.RequireRole("admin", "auditor"), GetProduct)
+		products.GET("/:id/qrcode", middleware.RequireRole("admin", "auditor"), GetQRCode)
 
 		// Write access: restricted to admin only.
 		products.POST("", middleware.RequireRole("admin"), CreateProduct)

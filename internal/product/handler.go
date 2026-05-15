@@ -1,14 +1,40 @@
 package product
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/hamdidal/dpp-backend/internal/auditlog"
 	"github.com/hamdidal/dpp-backend/internal/models"
 	"github.com/hamdidal/dpp-backend/pkg/database"
 	"gorm.io/gorm"
 )
+
+// productDiff holds the subset of product fields captured in audit log entries.
+type productDiff struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	SKU         string `json:"sku"`
+	Brand       string `json:"brand"`
+	Category    string `json:"category"`
+}
+
+func snapshotProduct(p models.Product) productDiff {
+	return productDiff{
+		Name:        p.Name,
+		Description: p.Description,
+		SKU:         p.SKU,
+		Brand:       p.Brand,
+		Category:    p.Category,
+	}
+}
+
+type productResponse struct {
+	models.Product
+	QRCodeURL string `json:"qr_code_url"`
+}
 
 type productRequest struct {
 	Name             string          `json:"name" binding:"required"`
@@ -52,7 +78,10 @@ func GetProduct(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		return
 	}
-	c.JSON(http.StatusOK, p)
+	c.JSON(http.StatusOK, productResponse{
+		Product:   p,
+		QRCodeURL: fmt.Sprintf("/api/v1/products/%s/qrcode", p.ID),
+	})
 }
 
 func CreateProduct(c *gin.Context) {
@@ -80,6 +109,11 @@ func CreateProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+	auditlog.LogAction(userID, c.GetString("username"), "create", "product", p.ID, p.Name,
+		map[string]any{"after": snapshotProduct(p)})
+
 	c.JSON(http.StatusCreated, p)
 }
 
@@ -101,6 +135,8 @@ func UpdateProduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	oldSnapshot := snapshotProduct(p)
 
 	p.Name = req.Name
 	p.Description = req.Description
@@ -136,6 +172,10 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+	auditlog.LogAction(userID, c.GetString("username"), "update", "product", id, req.Name,
+		map[string]any{"before": oldSnapshot, "after": snapshotProduct(p)})
+
 	database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id)
 	c.JSON(http.StatusOK, p)
 }
@@ -147,9 +187,20 @@ func DeleteProduct(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Delete(&models.Product{}, "id = ?", id).Error; err != nil {
+	var p models.Product
+	if err := database.DB.First(&p, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+		return
+	}
+
+	if err := database.DB.Delete(&p).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+	auditlog.LogAction(userID, c.GetString("username"), "delete", "product", p.ID, p.Name,
+		map[string]any{"before": snapshotProduct(p)})
+
 	c.JSON(http.StatusNoContent, nil)
 }
