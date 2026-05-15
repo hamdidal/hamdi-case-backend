@@ -1,0 +1,39 @@
+groups:
+  - name: backend_availability
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "Backend service is unreachable"
+          description: "Prometheus has been unable to scrape the backend /metrics endpoint for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(gin_requests_total{job="backend", code=~"5.."}[5m]))
+          /
+          sum(rate(gin_requests_total{job="backend"}[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "Elevated 5xx error rate on backend"
+          description: "More than 5% of requests are returning 5xx responses over the last 5 minutes."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(gin_request_duration_seconds_bucket{job="backend"}[5m])) by (le)
+          ) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "High p95 response latency on backend"
+          description: "The 95th percentile response time has exceeded 1 second for 2 minutes."

@@ -1,0 +1,112 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Backend Availability
+    folder: Infrastructure Alerts
+    interval: 1m
+    rules:
+      - uid: backend-down-rule
+        title: Backend Service Down
+        condition: threshold
+        data:
+          - refId: query
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: up{job="backend"}
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: query
+          - refId: threshold
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [query]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: threshold
+              type: threshold
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: Backend service is not reachable
+          description: >
+            Prometheus cannot scrape the backend /metrics endpoint.
+            The service may be down or failing health checks.
+        labels:
+          severity: critical
+        isPaused: false
+
+      - uid: backend-high-error-rate-rule
+        title: Backend High Error Rate
+        condition: threshold
+        data:
+          - refId: query
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum(rate(gin_requests_total{job="backend", code=~"5.."}[5m]))
+                /
+                sum(rate(gin_requests_total{job="backend"}[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: query
+          - refId: threshold
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0.05]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [query]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: threshold
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: Elevated 5xx error rate
+          description: More than 5% of backend requests are returning 5xx responses.
+        labels:
+          severity: warning
+        isPaused: false

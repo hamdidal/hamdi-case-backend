@@ -13,9 +13,9 @@ services:
       - dpp-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: ${HC_INTERVAL:-10s}
+      timeout: ${HC_TIMEOUT:-5s}
+      retries: ${HC_RETRIES:-5}
       start_period: 10s
 
   backend:
@@ -31,10 +31,10 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-8080}/health || exit 1"]
+      interval: ${HC_INTERVAL:-15s}
+      timeout: ${HC_TIMEOUT:-5s}
+      retries: ${HC_RETRIES:-3}
       start_period: 10s
 
   prometheus:
@@ -49,14 +49,18 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/bearer_token:/etc/prometheus/bearer_token:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     networks:
       - dpp-network
+    depends_on:
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      interval: ${HC_INTERVAL:-15s}
+      timeout: ${HC_TIMEOUT:-5s}
+      retries: ${HC_RETRIES:-3}
       start_period: 10s
 
   node-exporter:
@@ -72,34 +76,72 @@ services:
       - dpp-network
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9100/metrics || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      interval: ${HC_INTERVAL:-15s}
+      timeout: ${HC_TIMEOUT:-5s}
+      retries: ${HC_RETRIES:-3}
       start_period: 5s
+
+  loki:
+    image: grafana/loki:latest
+    container_name: dpp-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./loki/config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    networks:
+      - dpp-network
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-version"]
+      interval: ${HC_INTERVAL:-15s}
+      timeout: ${HC_TIMEOUT:-5s}
+      retries: ${HC_RETRIES:-3}
+      start_period: 10s
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: dpp-promtail
+    restart: unless-stopped
+    user: root
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dpp-network
+    depends_on:
+      loki:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:10.4.2
     container_name: dpp-grafana
     restart: unless-stopped
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${DB_PASSWORD}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_ALERTING_ENABLED: "false"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     networks:
       - dpp-network
     depends_on:
+      backend:
+        condition: service_healthy
       prometheus:
         condition: service_healthy
+      loki:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      interval: ${HC_INTERVAL:-15s}
+      timeout: ${HC_TIMEOUT:-5s}
+      retries: ${HC_RETRIES:-3}
       start_period: 15s
 
 networks:
@@ -110,3 +152,4 @@ volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  loki_data:
