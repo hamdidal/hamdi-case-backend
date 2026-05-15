@@ -14,6 +14,9 @@ vendor/
 *.out
 coverage.html
 
+# Backups
+backups/
+
 # IDE
 .idea/
 .vscode/

@@ -13,6 +13,7 @@ import (
 	"github.com/hamdidal/dpp-backend/internal/user"
 	"github.com/hamdidal/dpp-backend/pkg/database"
 	"github.com/joho/godotenv"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 func main() {
@@ -24,6 +25,9 @@ func main() {
 
 	r := gin.Default()
 	r.Use(corsMiddleware())
+
+	p := ginprometheus.NewPrometheus("gin")
+	p.Use(r)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "time": time.Now().UTC()})

@@ -7,10 +7,7 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
 
-  # Scrapes the backend's /api/v1/metrics endpoint (admin-only JWT required).
-  # Place a valid admin JWT in prometheus/bearer_token before starting the stack.
   - job_name: backend
-    metrics_path: /api/v1/metrics
-    bearer_token_file: /etc/prometheus/bearer_token
+    metrics_path: /metrics
     static_configs:
       - targets: ["backend:8080"]
