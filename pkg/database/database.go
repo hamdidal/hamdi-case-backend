@@ -44,6 +44,7 @@ func migrate() {
 		&models.Material{},
 		&models.CareInstruction{},
 		&models.AuditLog{},
+		&models.ProductVersion{},
 	); err != nil {
 		log.Fatalf("auto migration failed: %v", err)
 	}

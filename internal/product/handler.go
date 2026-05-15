@@ -1,6 +1,7 @@
 package product
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -124,8 +125,9 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
+	// Preload associations so the version snapshot captures the full product state.
 	var p models.Product
-	if err := database.DB.First(&p, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		return
 	}
@@ -138,6 +140,12 @@ func UpdateProduct(c *gin.Context) {
 
 	oldSnapshot := snapshotProduct(p)
 
+	// Marshal the full product state before field mutations for the version record.
+	snapshotJSON, _ := json.Marshal(p)
+
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+	username := c.GetString("username")
+
 	p.Name = req.Name
 	p.Description = req.Description
 	p.SKU = req.SKU
@@ -145,6 +153,25 @@ func UpdateProduct(c *gin.Context) {
 	p.Category = req.Category
 
 	if err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// Save a version snapshot of the pre-update state inside the transaction
+		// so the version and the update are committed atomically.
+		var maxVer int
+		tx.Model(&models.ProductVersion{}).
+			Where("product_id = ?", id).
+			Select("COALESCE(MAX(version_number), 0)").
+			Scan(&maxVer)
+
+		version := models.ProductVersion{
+			ProductID:         id,
+			VersionNumber:     maxVer + 1,
+			Snapshot:          models.JSONB(snapshotJSON),
+			CreatedByID:       userID,
+			CreatedByUsername: username,
+		}
+		if err := tx.Create(&version).Error; err != nil {
+			return err
+		}
+
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -172,8 +199,7 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	userID, _ := uuid.Parse(c.GetString("user_id"))
-	auditlog.LogAction(userID, c.GetString("username"), "update", "product", id, req.Name,
+	auditlog.LogAction(userID, username, "update", "product", id, req.Name,
 		map[string]any{"before": oldSnapshot, "after": snapshotProduct(p)})
 
 	database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id)

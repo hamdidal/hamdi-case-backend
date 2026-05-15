@@ -13,6 +13,9 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 		products.GET("", middleware.RequireRole("admin", "auditor"), ListProducts)
 		products.GET("/:id", middleware.RequireRole("admin", "auditor"), GetProduct)
 		products.GET("/:id/qrcode", middleware.RequireRole("admin", "auditor"), GetQRCode)
+		products.GET("/:id/pdf", middleware.RequireRole("admin", "auditor"), GetProductPDF)
+		products.GET("/:id/versions", middleware.RequireRole("admin", "auditor"), ListVersions)
+		products.GET("/:id/versions/:version_number", middleware.RequireRole("admin", "auditor"), GetVersion)
 
 		// Write access: restricted to admin only.
 		products.POST("", middleware.RequireRole("admin"), CreateProduct)
