@@ -1,0 +1,17 @@
+# Binary
+/bin/
+*.exe
+
+# Environment
+.env
+
+# Go
+vendor/
+*.test
+*.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
