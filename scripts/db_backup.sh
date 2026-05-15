@@ -29,8 +29,14 @@ echo "Backup saved: $BACKUP_FILE"
 # Retain only the 7 most recent backups
 find "$BACKUP_DIR" -name "${DB_NAME}_*.sql.gz" -type f | sort | head -n -7 | xargs -r rm --
 
-# Sync backup to cloud storage when Rclone is configured
+# Cloud sync is optional and non-blocking — the script always exits 0 as long
+# as the local dump succeeded, so missing Rclone or an unset remote never
+# causes a backup job failure.
 if [[ -n "${RCLONE_REMOTE_NAME:-}" ]] && command -v rclone &>/dev/null; then
   rclone copy "$BACKUP_DIR/$BACKUP_NAME" "${RCLONE_REMOTE_NAME}:backups" --progress
   echo "Backup synced to remote: ${RCLONE_REMOTE_NAME}:backups"
+else
+  echo "WARNING: Cloud sync skipped (Rclone not configured). Local backup is preserved."
 fi
+
+exit 0
