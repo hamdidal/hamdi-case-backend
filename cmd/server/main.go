@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hamdidal/dpp-backend/internal/auth"
 	"github.com/hamdidal/dpp-backend/internal/auditlog"
+	"github.com/hamdidal/dpp-backend/internal/health"
 	"github.com/hamdidal/dpp-backend/internal/metrics"
 	"github.com/hamdidal/dpp-backend/internal/product"
 	"github.com/hamdidal/dpp-backend/internal/user"
@@ -80,9 +81,7 @@ func newRouter() *gin.Engine {
 		corsMiddleware(),
 	)
 
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "time": time.Now().UTC()})
-	})
+	r.GET("/health", health.Handler)
 
 	r.GET("/p/:uuid", product.GetPassport)
 

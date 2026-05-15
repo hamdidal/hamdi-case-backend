@@ -1,0 +1,31 @@
+image: golang:1.22-alpine
+
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  GOPATH: /go
+  CGO_ENABLED: "0"
+
+cache:
+  key: go-modules
+  paths:
+    - /go/pkg/mod
+
+lint:
+  stage: lint
+  script:
+    - go mod verify
+    - go vet ./...
+
+test:
+  stage: test
+  script:
+    - go test -v ./...
+
+build:
+  stage: build
+  script:
+    - go build ./...
