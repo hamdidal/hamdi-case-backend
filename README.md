@@ -33,6 +33,7 @@ A production-grade REST API built with Go and Gin, backed by PostgreSQL, and shi
 - Docker + Docker Compose
 - Go 1.25+
 - `make`
+- Nginx (for host-level reverse proxy)
 
 ### 1. Configure environment
 
@@ -56,6 +57,31 @@ All services start in dependency order with health-checked readiness gates. The 
 | API        | http://localhost:8080/health |
 | Grafana    | http://localhost:3000        |
 | Prometheus | internal only (no host port) |
+
+---
+
+## Nginx Reverse Proxy
+
+Pre-built server block configs are provided in the `nginx/` directory for both the API and the frontend.
+
+| File | Domain | Upstream |
+|---|---|---|
+| `nginx/hamdi-case-backend.conf` | `hamdi-case-backend.mindmons.com` | `127.0.0.1:8080` |
+| `nginx/hamdi-case-frontend.conf` | `hamdi-case-frontend.mindmons.com` | `127.0.0.1:3001` |
+
+### Install
+
+```bash
+sudo cp nginx/*.conf /etc/nginx/sites-available/
+
+sudo ln -s /etc/nginx/sites-available/hamdi-case-backend.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/hamdi-case-frontend.conf /etc/nginx/sites-enabled/
+
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Both configs proxy `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, and `Host` headers, enforce a 10 MB request body limit, and write separate access and error logs under `/var/log/nginx/`. HTTPS termination can be added with Certbot: `sudo certbot --nginx -d hamdi-case-backend.mindmons.com -d hamdi-case-frontend.mindmons.com`.
 
 ---
 
@@ -259,6 +285,7 @@ make backup
 ├── prometheus/          # Prometheus config and alert rules
 ├── loki/                # Loki configuration
 ├── promtail/            # Promtail pipeline config
+├── nginx/               # Host-level Nginx reverse proxy configs
 ├── scripts/             # Operational scripts (backup)
 ├── .github/workflows/   # GitHub Actions CI pipeline
 ├── docker-compose.yml   # Full stack service definitions
