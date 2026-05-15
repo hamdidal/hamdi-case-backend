@@ -6,5 +6,6 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup) {
-	rg.GET("/metrics", middleware.JWTAuth(), middleware.RequireRole("admin"), ProxyMetrics)
+	// System metrics are read-only; both admin and auditor roles may query them.
+	rg.GET("/metrics", middleware.JWTAuth(), middleware.RequireRole("admin", "auditor"), ProxyMetrics)
 }

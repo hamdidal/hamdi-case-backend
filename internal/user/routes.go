@@ -6,6 +6,7 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup) {
+	// All user-management operations are restricted to the admin role.
 	users := rg.Group("/users")
 	users.Use(middleware.JWTAuth(), middleware.RequireRole("admin"))
 	{

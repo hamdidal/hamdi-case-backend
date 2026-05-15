@@ -9,8 +9,11 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 	products := rg.Group("/products")
 	products.Use(middleware.JWTAuth())
 	{
-		products.GET("", ListProducts)
-		products.GET("/:id", GetProduct)
+		// Read access: admin and auditor roles may browse the product catalogue.
+		products.GET("", middleware.RequireRole("admin", "auditor"), ListProducts)
+		products.GET("/:id", middleware.RequireRole("admin", "auditor"), GetProduct)
+
+		// Write access: restricted to admin only.
 		products.POST("", middleware.RequireRole("admin"), CreateProduct)
 		products.PUT("/:id", middleware.RequireRole("admin"), UpdateProduct)
 		products.DELETE("/:id", middleware.RequireRole("admin"), DeleteProduct)

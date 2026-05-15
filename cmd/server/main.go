@@ -83,6 +83,8 @@ func newRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "time": time.Now().UTC()})
 	})
 
+	r.GET("/p/:uuid", product.GetPassport)
+
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api.Group("/auth"))
 	product.RegisterRoutes(api)
