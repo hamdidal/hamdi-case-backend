@@ -13,8 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ── Request DTOs ──────────────────────────────────────────────────────────────
-
 type matIn struct {
 	Name       string  `json:"name"`
 	Percentage float64 `json:"percentage"`
@@ -40,8 +38,6 @@ type productRequest struct {
 	CareInstructions *careIn  `json:"careInstructions"`
 }
 
-// ── Audit helpers ─────────────────────────────────────────────────────────────
-
 type productSnap struct {
 	Name           string `json:"name"`
 	Brand          string `json:"brand"`
@@ -61,8 +57,6 @@ func snap(p models.Product) productSnap {
 		Status:         p.Status,
 	}
 }
-
-// ── Handlers ──────────────────────────────────────────────────────────────────
 
 func GetDashboardStats(c *gin.Context) {
 	type matStat struct {

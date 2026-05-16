@@ -52,7 +52,6 @@ func buildPassportPDF(p models.Product) *gofpdf.Fpdf {
 	pageW, _ := pdf.GetPageSize()
 	contentW := pageW - 30
 
-	// ── Header ────────────────────────────────────────────────────────────────
 	pdf.SetFont("Arial", "B", 20)
 	pdf.SetTextColor(30, 30, 30)
 	pdf.CellFormat(contentW, 10, "Digital Product Passport", "", 1, "C", false, 0, "")
@@ -66,7 +65,6 @@ func buildPassportPDF(p models.Product) *gofpdf.Fpdf {
 	pdf.Line(15, pdf.GetY(), pageW-15, pdf.GetY())
 	pdf.Ln(6)
 
-	// ── Basic Info ────────────────────────────────────────────────────────────
 	sectionHeader(pdf, contentW, "Basic Information")
 
 	col1, col2 := 50.0, contentW-50
@@ -90,7 +88,6 @@ func buildPassportPDF(p models.Product) *gofpdf.Fpdf {
 	}
 	pdf.Ln(6)
 
-	// ── Materials ─────────────────────────────────────────────────────────────
 	sectionHeader(pdf, contentW, "Materials")
 
 	if len(p.Materials) == 0 {
@@ -115,7 +112,6 @@ func buildPassportPDF(p models.Product) *gofpdf.Fpdf {
 	}
 	pdf.Ln(6)
 
-	// ── Care Instructions ─────────────────────────────────────────────────────
 	sectionHeader(pdf, contentW, "Care Instructions")
 
 	if p.Care == nil {
@@ -147,7 +143,6 @@ func buildPassportPDF(p models.Product) *gofpdf.Fpdf {
 		}
 	}
 
-	// ── Footer ────────────────────────────────────────────────────────────────
 	pdf.SetY(-15)
 	pdf.SetFont("Arial", "I", 8)
 	pdf.SetTextColor(150, 150, 150)
