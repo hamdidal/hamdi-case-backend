@@ -2,8 +2,8 @@ package product
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -13,58 +13,100 @@ import (
 	"gorm.io/gorm"
 )
 
-// productDiff holds the subset of product fields captured in audit log entries.
-type productDiff struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	SKU         string `json:"sku"`
-	Brand       string `json:"brand"`
-	Category    string `json:"category"`
+// ── Request DTOs ──────────────────────────────────────────────────────────────
+
+type matIn struct {
+	Name       string  `json:"name"`
+	Percentage float64 `json:"percentage"`
+	Recycled   bool    `json:"recycled"`
 }
 
-func snapshotProduct(p models.Product) productDiff {
-	return productDiff{
-		Name:        p.Name,
-		Description: p.Description,
-		SKU:         p.SKU,
-		Brand:       p.Brand,
-		Category:    p.Category,
-	}
-}
-
-type productResponse struct {
-	models.Product
-	QRCodeURL string `json:"qr_code_url"`
+type careIn struct {
+	WashTemperature string `json:"washTemperature"`
+	Ironing         string `json:"ironing"`
+	DryClean        bool   `json:"dryClean"`
+	Bleaching       bool   `json:"bleaching"`
+	Notes           string `json:"notes"`
 }
 
 type productRequest struct {
-	Name             string          `json:"name" binding:"required"`
-	Description      string          `json:"description"`
-	SKU              string          `json:"sku"`
-	Brand            string          `json:"brand"`
-	Category         string          `json:"category"`
-	Materials        []materialInput `json:"materials"`
-	CareInstructions []careInstInput `json:"care_instructions"`
+	Name             string   `json:"name" binding:"required"`
+	Brand            string   `json:"brand"`
+	Category         string   `json:"category"`
+	Country          string   `json:"country"`
+	ProductionDate   string   `json:"productionDate"`
+	Status           string   `json:"status"`
+	Materials        []matIn  `json:"materials"`
+	CareInstructions *careIn  `json:"careInstructions"`
 }
 
-type materialInput struct {
-	Name       string  `json:"name" binding:"required"`
-	Percentage float64 `json:"percentage"`
-	Origin     string  `json:"origin"`
+// ── Audit helpers ─────────────────────────────────────────────────────────────
+
+type productSnap struct {
+	Name           string `json:"name"`
+	Brand          string `json:"brand"`
+	Category       string `json:"category"`
+	Country        string `json:"country"`
+	ProductionDate string `json:"productionDate"`
+	Status         string `json:"status"`
 }
 
-type careInstInput struct {
-	Type        string `json:"type" binding:"required"`
-	Description string `json:"description"`
+func snap(p models.Product) productSnap {
+	return productSnap{
+		Name:           p.Name,
+		Brand:          p.Brand,
+		Category:       p.Category,
+		Country:        p.Country,
+		ProductionDate: p.ProductionDate,
+		Status:         p.Status,
+	}
 }
+
+// ── Handlers ──────────────────────────────────────────────────────────────────
 
 func ListProducts(c *gin.Context) {
-	var products []models.Product
-	if err := database.DB.Preload("Materials").Preload("CareInstructions").Find(&products).Error; err != nil {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	search := c.Query("search")
+	category := c.Query("category")
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	q := database.DB.Model(&models.Product{})
+	if search != "" {
+		like := "%" + search + "%"
+		q = q.Where("name ILIKE ? OR brand ILIKE ?", like, like)
+	}
+	if category != "" {
+		q = q.Where("category = ?", category)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, products)
+
+	var products []models.Product
+	if err := q.Preload("Materials").Preload("Care").
+		Order("created_at DESC").Limit(limit).Offset(offset).
+		Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  products,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func GetProduct(c *gin.Context) {
@@ -75,14 +117,12 @@ func GetProduct(c *gin.Context) {
 	}
 
 	var p models.Product
-	if err := database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("Materials").Preload("Care").
+		First(&p, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		return
 	}
-	c.JSON(http.StatusOK, productResponse{
-		Product:   p,
-		QRCodeURL: fmt.Sprintf("/api/v1/products/%s/qrcode", p.ID),
-	})
+	c.JSON(http.StatusOK, p)
 }
 
 func CreateProduct(c *gin.Context) {
@@ -92,18 +132,35 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
+	status := req.Status
+	if status == "" {
+		status = "draft"
+	}
+
 	p := models.Product{
-		Name:        req.Name,
-		Description: req.Description,
-		SKU:         req.SKU,
-		Brand:       req.Brand,
-		Category:    req.Category,
+		Name:           req.Name,
+		Brand:          req.Brand,
+		Category:       req.Category,
+		Country:        req.Country,
+		ProductionDate: req.ProductionDate,
+		Status:         status,
+		CreatedBy:      c.GetString("username"),
 	}
 	for _, m := range req.Materials {
-		p.Materials = append(p.Materials, models.Material{Name: m.Name, Percentage: m.Percentage, Origin: m.Origin})
+		p.Materials = append(p.Materials, models.Material{
+			Name:       m.Name,
+			Percentage: m.Percentage,
+			Recycled:   m.Recycled,
+		})
 	}
-	for _, ci := range req.CareInstructions {
-		p.CareInstructions = append(p.CareInstructions, models.CareInstruction{Type: ci.Type, Description: ci.Description})
+	if req.CareInstructions != nil {
+		p.Care = &models.ProductCare{
+			WashTemperature: req.CareInstructions.WashTemperature,
+			Ironing:         req.CareInstructions.Ironing,
+			DryClean:        req.CareInstructions.DryClean,
+			Bleaching:       req.CareInstructions.Bleaching,
+			Notes:           req.CareInstructions.Notes,
+		}
 	}
 
 	if err := database.DB.Create(&p).Error; err != nil {
@@ -113,7 +170,7 @@ func CreateProduct(c *gin.Context) {
 
 	userID, _ := uuid.Parse(c.GetString("user_id"))
 	auditlog.LogAction(userID, c.GetString("username"), "create", "product", p.ID, p.Name,
-		map[string]any{"after": snapshotProduct(p)})
+		map[string]any{"after": snap(p)})
 
 	c.JSON(http.StatusCreated, p)
 }
@@ -125,9 +182,9 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	// Preload associations so the version snapshot captures the full product state.
 	var p models.Product
-	if err := database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("Materials").Preload("Care").
+		First(&p, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		return
 	}
@@ -138,23 +195,23 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	oldSnapshot := snapshotProduct(p)
-
-	// Marshal the full product state before field mutations for the version record.
+	oldSnap := snap(p)
 	snapshotJSON, _ := json.Marshal(p)
 
 	userID, _ := uuid.Parse(c.GetString("user_id"))
 	username := c.GetString("username")
 
 	p.Name = req.Name
-	p.Description = req.Description
-	p.SKU = req.SKU
 	p.Brand = req.Brand
 	p.Category = req.Category
+	p.Country = req.Country
+	p.ProductionDate = req.ProductionDate
+	if req.Status != "" {
+		p.Status = req.Status
+	}
 
 	if err := database.DB.Transaction(func(tx *gorm.DB) error {
-		// Save a version snapshot of the pre-update state inside the transaction
-		// so the version and the update are committed atomically.
+		// Save version snapshot
 		var maxVer int
 		tx.Model(&models.ProductVersion{}).
 			Where("product_id = ?", id).
@@ -175,21 +232,35 @@ func UpdateProduct(c *gin.Context) {
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
+
+		// Replace materials
 		if err := tx.Where("product_id = ?", id).Delete(&models.Material{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("product_id = ?", id).Delete(&models.CareInstruction{}).Error; err != nil {
-			return err
-		}
 		for _, m := range req.Materials {
-			mat := models.Material{ProductID: id, Name: m.Name, Percentage: m.Percentage, Origin: m.Origin}
+			mat := models.Material{
+				ProductID:  id,
+				Name:       m.Name,
+				Percentage: m.Percentage,
+				Recycled:   m.Recycled,
+			}
 			if err := tx.Create(&mat).Error; err != nil {
 				return err
 			}
 		}
-		for _, ci := range req.CareInstructions {
-			inst := models.CareInstruction{ProductID: id, Type: ci.Type, Description: ci.Description}
-			if err := tx.Create(&inst).Error; err != nil {
+
+		// Replace care
+		tx.Where("product_id = ?", id).Delete(&models.ProductCare{})
+		if req.CareInstructions != nil {
+			care := models.ProductCare{
+				ProductID:       id,
+				WashTemperature: req.CareInstructions.WashTemperature,
+				Ironing:         req.CareInstructions.Ironing,
+				DryClean:        req.CareInstructions.DryClean,
+				Bleaching:       req.CareInstructions.Bleaching,
+				Notes:           req.CareInstructions.Notes,
+			}
+			if err := tx.Create(&care).Error; err != nil {
 				return err
 			}
 		}
@@ -200,9 +271,10 @@ func UpdateProduct(c *gin.Context) {
 	}
 
 	auditlog.LogAction(userID, username, "update", "product", id, req.Name,
-		map[string]any{"before": oldSnapshot, "after": snapshotProduct(p)})
+		map[string]any{"before": oldSnap, "after": snap(p)})
 
-	database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id)
+	// Return freshly-loaded product
+	database.DB.Preload("Materials").Preload("Care").First(&p, "id = ?", id)
 	c.JSON(http.StatusOK, p)
 }
 
@@ -226,7 +298,7 @@ func DeleteProduct(c *gin.Context) {
 
 	userID, _ := uuid.Parse(c.GetString("user_id"))
 	auditlog.LogAction(userID, c.GetString("username"), "delete", "product", p.ID, p.Name,
-		map[string]any{"before": snapshotProduct(p)})
+		map[string]any{"before": snap(p)})
 
 	c.JSON(http.StatusNoContent, nil)
 }

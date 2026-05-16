@@ -19,8 +19,8 @@ type User struct {
 	Username  string    `gorm:"uniqueIndex;not null" json:"username"`
 	Password  string    `gorm:"not null" json:"-"`
 	Role      Role      `gorm:"type:varchar(20);not null;default:'auditor'" json:"role"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

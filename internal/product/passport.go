@@ -11,25 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
-type PublicMaterial struct {
-	Name       string  `json:"name"`
-	Percentage float64 `json:"percentage"`
-	Origin     string  `json:"origin,omitempty"`
-}
-
-type PublicCareInstruction struct {
-	Type        string `json:"type"`
-	Description string `json:"description,omitempty"`
-}
-
-type PublicPassportResponse struct {
-	Name             string                  `json:"name"`
-	Brand            string                  `json:"brand,omitempty"`
-	Category         string                  `json:"category,omitempty"`
-	Materials        []PublicMaterial        `json:"materials,omitempty"`
-	CareInstructions []PublicCareInstruction `json:"care_instructions,omitempty"`
-}
-
+// GetPassport handles the public (no-auth) product passport endpoint.
+// It is registered at both /p/:uuid (legacy) and /api/v1/p/:uuid (current).
 func GetPassport(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("uuid"))
 	if err != nil {
@@ -40,7 +23,7 @@ func GetPassport(c *gin.Context) {
 	var p models.Product
 	err = database.DB.
 		Preload("Materials").
-		Preload("CareInstructions").
+		Preload("Care").
 		First(&p, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "passport not found"})
@@ -51,32 +34,7 @@ func GetPassport(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toPublicPassport(p))
-}
-
-func toPublicPassport(p models.Product) PublicPassportResponse {
-	materials := make([]PublicMaterial, len(p.Materials))
-	for i, m := range p.Materials {
-		materials[i] = PublicMaterial{
-			Name:       m.Name,
-			Percentage: m.Percentage,
-			Origin:     m.Origin,
-		}
-	}
-
-	care := make([]PublicCareInstruction, len(p.CareInstructions))
-	for i, ci := range p.CareInstructions {
-		care[i] = PublicCareInstruction{
-			Type:        ci.Type,
-			Description: ci.Description,
-		}
-	}
-
-	return PublicPassportResponse{
-		Name:             p.Name,
-		Brand:            p.Brand,
-		Category:         p.Category,
-		Materials:        materials,
-		CareInstructions: care,
-	}
+	// Return the full product structure (same as the authenticated endpoint)
+	// so the public page can render all fields.
+	c.JSON(http.StatusOK, p)
 }

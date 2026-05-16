@@ -22,7 +22,7 @@ func GetProductPDF(c *gin.Context) {
 	}
 
 	var p models.Product
-	err = database.DB.Preload("Materials").Preload("CareInstructions").First(&p, "id = ?", id).Error
+	err = database.DB.Preload("Materials").Preload("Care").First(&p, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		return
@@ -118,23 +118,32 @@ func buildPassportPDF(p models.Product) *gofpdf.Fpdf {
 	// ── Care Instructions ─────────────────────────────────────────────────────
 	sectionHeader(pdf, contentW, "Care Instructions")
 
-	if len(p.CareInstructions) == 0 {
+	if p.Care == nil {
 		pdf.SetFont("Arial", "I", 9)
 		pdf.SetTextColor(120, 120, 120)
 		pdf.CellFormat(contentW, 7, "No care instructions recorded.", "", 1, "L", false, 0, "")
 	} else {
 		colW := []float64{contentW * 0.35, contentW * 0.65}
-		tableHeader(pdf, colW, []string{"Type", "Description"})
-		for i, ci := range p.CareInstructions {
+		tableHeader(pdf, colW, []string{"Field", "Value"})
+		careRows := [][]string{
+			{"Wash Temperature", strOrNA(p.Care.WashTemperature)},
+			{"Ironing", strOrNA(p.Care.Ironing)},
+			{"Dry Clean", boolLabel(p.Care.DryClean)},
+			{"Bleaching", boolLabel(p.Care.Bleaching)},
+			{"Notes", strOrNA(p.Care.Notes)},
+		}
+		for i, row := range careRows {
 			if i%2 == 0 {
 				pdf.SetFillColor(245, 245, 245)
 			} else {
 				pdf.SetFillColor(255, 255, 255)
 			}
+			pdf.SetFont("Arial", "B", 9)
+			pdf.SetTextColor(60, 60, 60)
+			pdf.CellFormat(colW[0], 7, row[0], "1", 0, "L", true, 0, "")
 			pdf.SetFont("Arial", "", 9)
 			pdf.SetTextColor(30, 30, 30)
-			pdf.CellFormat(colW[0], 7, ci.Type, "1", 0, "L", true, 0, "")
-			pdf.CellFormat(colW[1], 7, strOrNA(ci.Description), "1", 1, "L", true, 0, "")
+			pdf.CellFormat(colW[1], 7, row[1], "1", 1, "L", true, 0, "")
 		}
 	}
 
@@ -170,4 +179,11 @@ func strOrNA(s string) string {
 		return "N/A"
 	}
 	return s
+}
+
+func boolLabel(b bool) string {
+	if b {
+		return "Yes"
+	}
+	return "No"
 }

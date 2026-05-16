@@ -83,10 +83,13 @@ func newRouter() *gin.Engine {
 
 	r.GET("/health", health.Handler)
 
+	// Legacy public passport URL (kept for backward compat)
 	r.GET("/p/:uuid", product.GetPassport)
 
 	api := r.Group("/api/v1")
 	auth.RegisterRoutes(api.Group("/auth"))
+	// Public passport under /api/v1 — no auth required
+	api.GET("/p/:uuid", product.GetPassport)
 	product.RegisterRoutes(api)
 	user.RegisterRoutes(api)
 	metrics.RegisterRoutes(api)
