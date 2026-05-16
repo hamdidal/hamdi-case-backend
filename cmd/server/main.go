@@ -91,6 +91,7 @@ func newRouter() *gin.Engine {
 	// Public passport under /api/v1 — no auth required
 	api.GET("/p/:uuid", product.GetPassport)
 	product.RegisterRoutes(api)
+	product.RegisterDashboardRoutes(api)
 	user.RegisterRoutes(api)
 	metrics.RegisterRoutes(api)
 	auditlog.RegisterRoutes(api)

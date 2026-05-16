@@ -5,6 +5,12 @@ import (
 	"github.com/hamdidal/dpp-backend/internal/middleware"
 )
 
+func RegisterDashboardRoutes(rg *gin.RouterGroup) {
+	dashboard := rg.Group("/dashboard")
+	dashboard.Use(middleware.JWTAuth())
+	dashboard.GET("/stats", middleware.RequireRole("admin", "auditor"), GetDashboardStats)
+}
+
 func RegisterRoutes(rg *gin.RouterGroup) {
 	products := rg.Group("/products")
 	products.Use(middleware.JWTAuth())

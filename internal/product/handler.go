@@ -64,6 +64,46 @@ func snap(p models.Product) productSnap {
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
+func GetDashboardStats(c *gin.Context) {
+	type matStat struct {
+		Name       string  `json:"name"`
+		Percentage float64 `json:"percentage"`
+	}
+	type productStat struct {
+		Category  string    `json:"category"`
+		Brand     string    `json:"brand"`
+		CreatedAt string    `json:"createdAt"`
+		Materials []matStat `json:"materials"`
+	}
+
+	var products []models.Product
+	if err := database.DB.
+		Select("id, category, brand, created_at").
+		Preload("Materials", func(db *gorm.DB) *gorm.DB {
+			return db.Select("product_id, name, percentage")
+		}).
+		Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	stats := make([]productStat, len(products))
+	for i, p := range products {
+		mats := make([]matStat, len(p.Materials))
+		for j, m := range p.Materials {
+			mats[j] = matStat{Name: m.Name, Percentage: m.Percentage}
+		}
+		stats[i] = productStat{
+			Category:  p.Category,
+			Brand:     p.Brand,
+			CreatedAt: p.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			Materials: mats,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": stats})
+}
+
 func ListProducts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
