@@ -2,6 +2,7 @@ package user
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,12 +15,35 @@ type roleChangeRequest struct {
 }
 
 func ListUsers(c *gin.Context) {
-	var users []models.User
-	if err := database.DB.Find(&users).Error; err != nil {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 200 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	var total int64
+	if err := database.DB.Model(&models.User{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, users)
+
+	var users []models.User
+	if err := database.DB.Order("created_at DESC").Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  users,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func ChangeRole(c *gin.Context) {
