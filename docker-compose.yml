@@ -144,6 +144,24 @@ services:
       retries: ${HC_RETRIES:-3}
       start_period: 15s
 
+  frontend:
+    build:
+      context: /home/ubuntu/hamdi-case-frontend
+      dockerfile: Dockerfile
+    container_name: dpp-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    networks:
+      - dpp-network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   dpp-network:
     driver: bridge
