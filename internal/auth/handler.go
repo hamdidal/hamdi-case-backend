@@ -3,8 +3,10 @@ package auth
 import (
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,14 +15,43 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var usernameRe = regexp.MustCompile(`^[a-zA-Z0-9._]{3,24}$`)
+
+func validatePassword(p string) string {
+	if len(p) < 8 {
+		return "password must be at least 8 characters"
+	}
+	var hasUpper, hasDigit, hasSpecial bool
+	for _, r := range p {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		case r == '!' || r == '@' || r == '#' || r == '$' || r == '%' || r == '^' || r == '&' || r == '*':
+			hasSpecial = true
+		}
+	}
+	if !hasUpper {
+		return "password must contain at least 1 uppercase letter"
+	}
+	if !hasDigit {
+		return "password must contain at least 1 digit"
+	}
+	if !hasSpecial {
+		return "password must contain at least 1 special character (!@#$%^&*)"
+	}
+	return ""
+}
+
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
 type RegisterRequest struct {
-	Username string      `json:"username" binding:"required,min=3"`
-	Password string      `json:"password" binding:"required,min=6"`
+	Username string      `json:"username" binding:"required"`
+	Password string      `json:"password" binding:"required"`
 	Role     models.Role `json:"role"`
 }
 
@@ -55,6 +86,16 @@ func Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !usernameRe.MatchString(req.Username) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username must be 3-24 characters and contain only letters, digits, dots, or underscores"})
+		return
+	}
+
+	if msg := validatePassword(req.Password); msg != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 		return
 	}
 
