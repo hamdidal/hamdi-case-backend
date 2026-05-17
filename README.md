@@ -114,7 +114,10 @@ All protected endpoints require a `Bearer` token in the `Authorization` header, 
 |--------|---------------------------------|-----------------|------------------------------------|
 | GET    | `/api/v1/products`              | admin, auditor  | List all products                  |
 | GET    | `/api/v1/products/:id`          | admin, auditor  | Get product with `qr_code_url`     |
-| GET    | `/api/v1/products/:id/qrcode`   | admin, auditor  | Generate QR code PNG (256×256)     |
+| GET    | `/api/v1/products/:id/qrcode`            | admin, auditor  | Generate QR code PNG (256×256)          |
+| GET    | `/api/v1/products/:id/pdf`               | admin, auditor  | Export product passport as PDF          |
+| GET    | `/api/v1/products/:id/versions`          | admin, auditor  | Version history list                    |
+| GET    | `/api/v1/products/:id/versions/:version_number` | admin, auditor | Specific version snapshot          |
 | POST   | `/api/v1/products`              | admin           | Create product                     |
 | PUT    | `/api/v1/products/:id`          | admin           | Update product                     |
 | DELETE | `/api/v1/products/:id`          | admin           | Delete product                     |
