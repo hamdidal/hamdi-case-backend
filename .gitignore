@@ -21,3 +21,4 @@ backups/
 .idea/
 .vscode/
 *.swp
+/server
