@@ -18,10 +18,9 @@ A production-grade REST API built with Go and Gin, backed by PostgreSQL, and shi
                └───────────┬───────────┘
                            │
                ┌───────────▼───────────┐
-               │     dpp-grafana       │◀──── dpp-loki ◀──── dpp-promtail
-               │     :3000             │          ▲
-               └───────────────────────┘          │
-                                            Docker socket
+               │     dpp-grafana       │◀──── Docker socket
+               │     :3000             │          
+               └───────────────────────┘          
 ```
 
 ---
@@ -219,14 +218,10 @@ Every request produces a single JSON log line on stdout:
 
 Every request is assigned a `request_id` (propagated via `X-Request-ID` header) that threads through all log entries, making distributed tracing straightforward.
 
-### Log Aggregation — Loki + Grafana
-
-Promtail tails the Docker socket and ships all container logs to Loki. Grafana is pre-provisioned with the Loki datasource.
-
 **To query backend logs:**
 
 1. Open Grafana at `http://localhost:3000`
-2. Navigate to **Explore → Loki**
+2. Navigate to **Explore**
 3. Run:
 
 ```logql
@@ -361,7 +356,6 @@ make backup
 ├── pkg/database/        # Database connection and migration
 ├── grafana/             # Grafana provisioning (datasources, alerting)
 ├── prometheus/          # Prometheus config and alert rules
-├── loki/                # Loki configuration
 ├── promtail/            # Promtail pipeline config
 ├── nginx/               # Host-level Nginx reverse proxy configs
 ├── scripts/             # Operational scripts (backup)
