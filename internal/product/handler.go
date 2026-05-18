@@ -229,7 +229,7 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	oldSnap := snap(p)
+	oldFull := fullSnapFromProduct(p)
 	snapshotJSON, _ := json.Marshal(p)
 
 	userID, _ := uuid.Parse(c.GetString("user_id"))
@@ -304,8 +304,12 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	auditlog.LogAction(userID, username, "update", "product", id, req.Name,
-		map[string]any{"before": oldSnap, "after": snap(p)})
+	newFull := fullSnapFromReq(req, p.Status)
+	auditlog.LogAction(userID, username, "update", "product", id, req.Name, map[string]any{
+		"before": oldFull,
+		"after":  newFull,
+		"diff":   deepDiff(oldFull, newFull),
+	})
 
 	// Return freshly-loaded product
 	database.DB.Preload("Materials").Preload("Care").First(&p, "id = ?", id)
