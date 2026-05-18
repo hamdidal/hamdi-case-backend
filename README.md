@@ -121,6 +121,51 @@ Both configs proxy `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, and `Hos
 
 ---
 
+## Testing
+
+The backend ships with a comprehensive unit and integration test suite. Tests use the native `testing` package, `github.com/stretchr/testify` for assertions, and a pure-Go SQLite in-memory database (`github.com/glebarez/sqlite`) so no external infrastructure is required to run them.
+
+### Running the tests
+
+```bash
+# Run all tests with verbose output and race detection
+go test -v -race ./...
+
+# Run only a specific package
+go test -v ./internal/auth/
+go test -v ./internal/middleware/
+go test -v ./internal/product/
+go test -v ./internal/user/
+
+# Run a single named test
+go test -v -run TestValidatePassword ./internal/auth/
+go test -v -run TestCreateProduct_MaterialValidation ./internal/product/
+
+# Generate a coverage profile and view it in the browser
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+### Test structure
+
+| Package | File | What is covered |
+|---|---|---|
+| `internal/auth` | `handler_test.go` | `validatePassword` (table-driven), username regex, `Login` handler, `Register` handler (valid inputs, weak passwords, duplicate username) |
+| `internal/middleware` | `jwt_test.go` | `JWTAuth` (missing header, expired, wrong secret, valid token), `RequireRole` (403 vs 200), full RBAC matrix for product endpoints |
+| `internal/product` | `diff_test.go` | `validateMaterials` (100% business rule, boundary cases), `deepDiff` (scalar changes, material added/removed, care CRUD), `fullSnapFromProduct` |
+| `internal/product` | `handler_test.go` | `GetProduct` (200/404/400), `ListProducts` pagination, `CreateProduct` material validation (valid 100%, rejected 99.9%/105%), `DeleteProduct`, `UpdateProduct` material guard |
+| `internal/user` | `handler_test.go` | `ListUsers` pagination, `ChangeRole` (promote/demote/invalid role/not found), `DeleteUser`, `UpdateProfile`, `ChangePassword` (correct/wrong password) |
+
+### Material composition business rule
+
+`POST /api/v1/products` and `PUT /api/v1/products/:id` now enforce that material percentages sum to exactly 100% (±0.01% floating-point tolerance). Requests that violate this rule receive a `422 Unprocessable Entity` response:
+
+```json
+{ "error": "material percentages must sum to exactly 100% (got 99.90%)" }
+```
+
+---
+
 ## API
 
 All protected endpoints require a `Bearer` token in the `Authorization` header, obtained from `/api/v1/auth/login`.

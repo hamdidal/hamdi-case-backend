@@ -2,6 +2,7 @@ package product
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -56,6 +57,24 @@ func snap(p models.Product) productSnap {
 		ProductionDate: p.ProductionDate,
 		Status:         p.Status,
 	}
+}
+
+// validateMaterials returns an error when the sum of all material percentages
+// falls outside the [99.99, 100.01] range (±0.01 floating-point tolerance).
+// An empty slice is considered valid — the caller decides whether materials
+// are required.
+func validateMaterials(mats []matIn) error {
+	if len(mats) == 0 {
+		return nil
+	}
+	var total float64
+	for _, m := range mats {
+		total += m.Percentage
+	}
+	if total < 99.99 || total > 100.01 {
+		return fmt.Errorf("material percentages must sum to exactly 100%% (got %.2f%%)", total)
+	}
+	return nil
 }
 
 func GetDashboardStats(c *gin.Context) {
@@ -166,6 +185,11 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
+	if err := validateMaterials(req.Materials); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+
 	status := req.Status
 	if status == "" {
 		status = "draft"
@@ -179,6 +203,8 @@ func CreateProduct(c *gin.Context) {
 		ProductionDate: req.ProductionDate,
 		Status:         status,
 		CreatedBy:      c.GetString("username"),
+		// Auto-generate SKU so the unique index is never violated by API-created products.
+		SKU: uuid.New().String(),
 	}
 	for _, m := range req.Materials {
 		p.Materials = append(p.Materials, models.Material{
@@ -226,6 +252,11 @@ func UpdateProduct(c *gin.Context) {
 	var req productRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validateMaterials(req.Materials); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
 	}
 
