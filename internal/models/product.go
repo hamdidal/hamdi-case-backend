@@ -10,16 +10,16 @@ import (
 type Product struct {
 	ID             uuid.UUID    `gorm:"type:uuid;primaryKey"                                      json:"id"`
 	UUID           string       `gorm:"-"                                                          json:"uuid"`
-	Name           string       `gorm:"not null"                                                   json:"name"`
-	Brand          string       `                                                                  json:"brand"`
-	Category       string       `                                                                  json:"category"`
+	Name           string       `gorm:"not null;index"                                             json:"name"`
+	Brand          string       `gorm:"index"                                                      json:"brand"`
+	Category       string       `gorm:"index"                                                      json:"category"`
 	Country        string       `                                                                  json:"country"`
 	ProductionDate string       `                                                                  json:"productionDate"`
-	Status         string       `gorm:"default:'draft'"                                            json:"status"`
+	Status         string       `gorm:"default:'draft';index"                                      json:"status"`
 	CreatedBy      string       `                                                                  json:"createdBy,omitempty"`
 	Materials      []Material   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"           json:"materials"`
 	Care           *ProductCare `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"           json:"careInstructions,omitempty"`
-	CreatedAt      time.Time    `                                                                  json:"createdAt"`
+	CreatedAt      time.Time    `gorm:"index"                                                      json:"createdAt"`
 	UpdatedAt      time.Time    `                                                                  json:"updatedAt"`
 	// Legacy fields kept for backward compat — not used by the main API.
 	Description string `json:"description,omitempty"`
@@ -48,7 +48,7 @@ func (p *Product) AfterCreate(_ *gorm.DB) error {
 // Material is a single fibre/substance component of a product.
 type Material struct {
 	ID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"-"`
-	ProductID  uuid.UUID `gorm:"type:uuid;not null"   json:"-"`
+	ProductID  uuid.UUID `gorm:"type:uuid;not null;index" json:"-"`
 	Name       string    `gorm:"not null"             json:"name"`
 	Percentage float64   `                            json:"percentage"`
 	Recycled   bool      `                            json:"recycled"`

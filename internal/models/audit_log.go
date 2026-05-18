@@ -51,12 +51,12 @@ type AuditLog struct {
 	ID         uuid.UUID `gorm:"type:uuid;primaryKey"       json:"id"`
 	UserID     uuid.UUID `gorm:"type:uuid;not null;index"   json:"userId"`
 	Username   string    `gorm:"not null"                   json:"username"`
-	Action     string    `gorm:"not null"                   json:"action"`
-	EntityType string    `gorm:"not null"                   json:"entityType"`
+	Action     string    `gorm:"not null;index"             json:"action"`
+	EntityType string    `gorm:"not null;index"             json:"entityType"`
 	EntityID   uuid.UUID `gorm:"type:uuid;not null;index"   json:"entityId"`
 	EntityName string    `                                  json:"entityName"`
 	Changes    JSONB     `gorm:"type:jsonb"                 json:"changes"`
-	CreatedAt  time.Time `                                  json:"timestamp"`
+	CreatedAt  time.Time `gorm:"index"                      json:"timestamp"`
 }
 
 func (a *AuditLog) BeforeCreate(tx *gorm.DB) error {
