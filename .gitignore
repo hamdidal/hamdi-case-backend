@@ -22,3 +22,11 @@ backups/
 .vscode/
 *.swp
 /server
+
+# Additional
+*.log
+.env.local
+tmp/
+coverage.out
+*.prof
+.DS_Store

@@ -7,3 +7,9 @@ tmp/
 *.md
 *.test
 *.out
+*.log
+.vscode/
+.idea/
+coverage.out
+.github/
+.gitlab-ci.yml
