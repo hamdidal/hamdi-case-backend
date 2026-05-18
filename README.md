@@ -337,7 +337,7 @@ make backup
 | `GRAFANA_PORT`         | No       | `3000`           | Host port for Grafana                    |
 | `BACKUP_CONTAINER`     | No       | `dpp-postgres`   | Docker container name for `pg_dump`      |
 | `RCLONE_REMOTE_NAME`   | No       | —                | Rclone remote for off-site backup sync   |
-| `PUBLIC_BASE_URL`      | No       | `http://localhost:8080` | Base URL embedded in QR codes (e.g. `http://51.102.69.153:3001`) |
+| `PUBLIC_BASE_URL`      | No       | `http://localhost:8080` | Base URL embedded in QR codes (e.g. `http://3.120.228.32:3001`) |
 | `HC_INTERVAL`          | No       | `15s`            | Healthcheck probe interval               |
 | `HC_TIMEOUT`           | No       | `5s`             | Healthcheck timeout                      |
 | `HC_RETRIES`           | No       | `3`              | Healthcheck retry count                  |
