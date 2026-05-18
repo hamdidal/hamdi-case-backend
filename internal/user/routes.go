@@ -6,12 +6,22 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup) {
-	// All user-management operations are restricted to the admin role.
 	users := rg.Group("/users")
-	users.Use(middleware.JWTAuth(), middleware.RequireRole("admin"))
+
+	// Self-service profile endpoints — any authenticated user.
+	me := users.Group("/me")
+	me.Use(middleware.JWTAuth())
 	{
-		users.GET("", ListUsers)
-		users.PATCH("/:id/role", ChangeRole)
-		users.DELETE("/:id", DeleteUser)
+		me.PUT("", UpdateProfile)
+		me.PUT("/password", ChangePassword)
+	}
+
+	// Admin-only user-management endpoints.
+	admin := users.Group("")
+	admin.Use(middleware.JWTAuth(), middleware.RequireRole("admin"))
+	{
+		admin.GET("", ListUsers)
+		admin.PATCH("/:id/role", ChangeRole)
+		admin.DELETE("/:id", DeleteUser)
 	}
 }
