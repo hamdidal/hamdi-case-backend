@@ -17,7 +17,6 @@ import (
 	"github.com/hamdidal/dpp-backend/internal/auth"
 	"github.com/hamdidal/dpp-backend/internal/auditlog"
 	"github.com/hamdidal/dpp-backend/internal/health"
-	"github.com/hamdidal/dpp-backend/internal/metrics"
 	"github.com/hamdidal/dpp-backend/internal/product"
 	"github.com/hamdidal/dpp-backend/internal/user"
 	"github.com/hamdidal/dpp-backend/pkg/database"
@@ -108,7 +107,6 @@ func newRouter() *gin.Engine {
 	product.RegisterRoutes(api)
 	product.RegisterDashboardRoutes(api)
 	user.RegisterRoutes(api)
-	metrics.RegisterRoutes(api)
 	auditlog.RegisterRoutes(api)
 
 	return r

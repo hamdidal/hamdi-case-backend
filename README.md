@@ -7,21 +7,46 @@ A production-grade REST API built with Go and Gin, backed by PostgreSQL, and shi
 ## Architecture Overview
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌────────────────────────────┐
-│   Client    │────▶│  dpp-backend │────▶│       dpp-postgres         │
-└─────────────┘     │  :8080       │     └────────────────────────────┘
-                    └──────┬───────┘
-                           │ /metrics
-               ┌───────────▼───────────┐
-               │    dpp-prometheus     │
-               │    dpp-node-exporter  │
-               └───────────┬───────────┘
-                           │
-               ┌───────────▼───────────┐
-               │     dpp-grafana       │◀──── Docker socket
-               │     :3000             │          
-               └───────────────────────┘          
+┌─────────────┐     ┌─────────────────────────┐
+│   Client    │────▶│  Nginx reverse proxy    │
+└─────────────┘     │  /api/v1/metrics → 8081 │
+                    │  /*              → 8080  │
+                    └────────┬────────┬────────┘
+                             │        │
+               ┌─────────────▼─┐  ┌───▼────────────────────────┐
+               │  dpp-backend  │  │  dpp-metrics-proxy         │
+               │  :8080        │  │  :8081                     │
+               │  auth/products│  │  GET /api/v1/metrics       │
+               │  users/audit  │  │  GET /api/v1/metrics/query │
+               └──────┬────────┘  └────────────┬───────────────┘
+                      │                        │ PromQL
+               ┌──────▼─────────────────────────▼───────┐
+               │  dpp-postgres   dpp-prometheus          │
+               │                 dpp-node-exporter       │
+               └────────────────────────┬────────────────┘
+                                        │
+                            ┌───────────▼───────────┐
+                            │     dpp-grafana       │
+                            │     :3000             │
+                            └───────────────────────┘
 ```
+
+### Why metrics was extracted
+
+The `/api/v1/metrics` endpoints have no dependency on the PostgreSQL database — they purely proxy PromQL queries to Prometheus. Extracting them into a dedicated `metrics-proxy` binary:
+
+- **Independent scaling**: metrics query load can be scaled separately from the main API.
+- **Fault isolation**: a Prometheus outage does not affect product/auth/user endpoints.
+- **Single responsibility**: each binary has a clear, minimal surface area.
+
+### Services and port assignments
+
+| Service           | Container             | Host port | Responsibility                          |
+|-------------------|-----------------------|-----------|-----------------------------------------|
+| `backend`         | `dpp-backend`         | 8080      | auth, products, users, audit logs       |
+| `metrics-proxy`   | `dpp-metrics-proxy`   | 8081      | `/api/v1/metrics`, `/api/v1/metrics/query` |
+| `prometheus`      | `dpp-prometheus`      | internal  | metrics scraping and storage            |
+| `grafana`         | `dpp-grafana`         | 3000      | dashboards and alerting UI              |
 
 ---
 
@@ -343,7 +368,9 @@ make backup
 
 ```
 .
-├── cmd/server/          # Application entrypoint and router setup
+├── cmd/
+│   ├── server/          # Main API entrypoint (auth, products, users, audit)
+│   └── metrics-proxy/   # Standalone metrics microservice (port 8081)
 ├── internal/
 │   ├── auth/            # JWT authentication handlers and routes
 │   ├── auditlog/        # Audit log helper, handler, and routes
