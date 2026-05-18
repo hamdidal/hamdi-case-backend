@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/hamdidal/dpp-backend/internal/auth"
@@ -73,12 +75,25 @@ func main() {
 }
 
 func newRouter() *gin.Engine {
+	allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOriginsStr == "" {
+		allowedOriginsStr = "http://localhost:3001"
+	}
+	allowedOrigins := strings.Split(allowedOriginsStr, ",")
+
 	r := gin.New()
 	r.Use(
 		gin.Recovery(),
 		requestIDMiddleware(),
 		structuredLogger(),
-		corsMiddleware(),
+		cors.New(cors.Config{
+			AllowOrigins:     allowedOrigins,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}),
 	)
 
 	r.GET("/health", health.Handler)
@@ -125,20 +140,5 @@ func structuredLogger() gin.HandlerFunc {
 			"duration_ms", time.Since(start).Milliseconds(),
 			"client_ip", c.ClientIP(),
 		)
-	}
-}
-
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-Request-ID")
-		c.Header("Access-Control-Max-Age", "86400")
-
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-		c.Next()
 	}
 }
