@@ -3,12 +3,10 @@ package metrics
 import (
 	"encoding/json"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -50,20 +48,20 @@ func QueryMetrics(c *gin.Context) {
 	now := time.Now().UTC()
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
 
-	if prometheusURL != "" {
-		if val, ok := queryPrometheus(prometheusURL, query); ok {
-			c.JSON(http.StatusOK, gin.H{
-				"query":     query,
-				"value":     val,
-				"timestamp": now.Format(time.RFC3339),
-			})
-			return
-		}
+	if prometheusURL == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "prometheus not configured"})
+		return
+	}
+
+	val, ok := queryPrometheus(prometheusURL, query)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "prometheus query returned no data"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"query":     query,
-		"value":     mockMetricValue(query),
+		"value":     val,
 		"timestamp": now.Format(time.RFC3339),
 	})
 }
@@ -98,20 +96,3 @@ func queryPrometheus(baseURL, query string) (float64, bool) {
 	return val, true
 }
 
-func mockMetricValue(query string) float64 {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	switch {
-	case strings.Contains(query, "cpu"):
-		return 28.5 + rng.Float64()*15
-	case strings.Contains(query, "MemAvailable") || strings.Contains(query, "memory"):
-		return 62.3 + rng.Float64()*10
-	case strings.Contains(query, "filesystem") || strings.Contains(query, "disk"):
-		return 38.7 + rng.Float64()*5
-	case strings.Contains(query, "receive"):
-		return 98304 + rng.Float64()*65536
-	case strings.Contains(query, "transmit"):
-		return 65536 + rng.Float64()*32768
-	default:
-		return 50.0
-	}
-}
