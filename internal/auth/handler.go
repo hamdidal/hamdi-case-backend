@@ -21,6 +21,10 @@ func validatePassword(p string) string {
 	if len(p) < 8 {
 		return "password must be at least 8 characters"
 	}
+	// 72 is bcrypt's effective maximum — anything longer is silently truncated
+	if len(p) > 72 {
+		return "password must be at most 72 characters"
+	}
 	var hasUpper, hasDigit, hasSpecial bool
 	for _, r := range p {
 		switch {
@@ -45,13 +49,13 @@ func validatePassword(p string) string {
 }
 
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username" binding:"required,max=24"`
+	Password string `json:"password" binding:"required,max=72"`
 }
 
 type RegisterRequest struct {
-	Username string      `json:"username" binding:"required"`
-	Password string      `json:"password" binding:"required"`
+	Username string      `json:"username" binding:"required,max=24"`
+	Password string      `json:"password" binding:"required,max=72"`
 	Role     models.Role `json:"role"`
 }
 

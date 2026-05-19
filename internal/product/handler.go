@@ -15,28 +15,28 @@ import (
 )
 
 type matIn struct {
-	Name       string  `json:"name"`
+	Name       string  `json:"name"       binding:"omitempty,max=255"`
 	Percentage float64 `json:"percentage"`
 	Recycled   bool    `json:"recycled"`
 }
 
 type careIn struct {
-	WashTemperature string `json:"washTemperature"`
-	Ironing         string `json:"ironing"`
+	WashTemperature string `json:"washTemperature" binding:"omitempty,max=255"`
+	Ironing         string `json:"ironing"         binding:"omitempty,max=255"`
 	DryClean        bool   `json:"dryClean"`
 	Bleaching       bool   `json:"bleaching"`
-	Notes           string `json:"notes"`
+	Notes           string `json:"notes"           binding:"omitempty,max=1000"`
 }
 
 type productRequest struct {
-	Name             string   `json:"name" binding:"required"`
-	Brand            string   `json:"brand"`
-	Category         string   `json:"category"`
-	Country          string   `json:"country"`
-	ProductionDate   string   `json:"productionDate"`
-	Status           string   `json:"status"`
-	Materials        []matIn  `json:"materials"`
-	CareInstructions *careIn  `json:"careInstructions"`
+	Name             string  `json:"name"             binding:"required,max=200"`
+	Brand            string  `json:"brand"            binding:"omitempty,max=255"`
+	Category         string  `json:"category"         binding:"omitempty,max=255"`
+	Country          string  `json:"country"          binding:"omitempty,max=255"`
+	ProductionDate   string  `json:"productionDate"   binding:"omitempty,max=20"`
+	Status           string  `json:"status"           binding:"omitempty,max=20"`
+	Materials        []matIn `json:"materials"        binding:"omitempty,dive"`
+	CareInstructions *careIn `json:"careInstructions"`
 }
 
 type productSnap struct {

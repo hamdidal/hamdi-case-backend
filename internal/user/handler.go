@@ -95,8 +95,8 @@ func DeleteUser(c *gin.Context) {
 }
 
 type updateProfileRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	Username string `json:"username" binding:"omitempty,max=24"`
+	Email    string `json:"email"    binding:"omitempty,max=128"`
 }
 
 func UpdateProfile(c *gin.Context) {
@@ -132,8 +132,8 @@ func UpdateProfile(c *gin.Context) {
 }
 
 type changePasswordRequest struct {
-	CurrentPassword string `json:"current_password" binding:"required"`
-	NewPassword     string `json:"new_password" binding:"required"`
+	CurrentPassword string `json:"current_password" binding:"required,max=72"`
+	NewPassword     string `json:"new_password"     binding:"required,max=72"`
 }
 
 func ChangePassword(c *gin.Context) {

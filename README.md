@@ -27,7 +27,7 @@ A production-grade REST API built with Go and Gin, backed by PostgreSQL, and shi
                                         │
                             ┌───────────▼───────────┐
                             │     dpp-grafana       │
-                            │     :3000             │
+                            │     :3100             │
                             └───────────────────────┘
 ```
 
@@ -46,7 +46,7 @@ The `/api/v1/metrics` endpoints have no dependency on the PostgreSQL database �
 | `backend`         | `dpp-backend`         | 8080      | auth, products, users, audit logs       |
 | `metrics-proxy`   | `dpp-metrics-proxy`   | 8081      | `/api/v1/metrics`, `/api/v1/metrics/query` |
 | `prometheus`      | `dpp-prometheus`      | internal  | metrics scraping and storage            |
-| `grafana`         | `dpp-grafana`         | 3000      | dashboards and alerting UI              |
+| `grafana`         | `dpp-grafana`         | 3100      | dashboards and alerting UI              |
 
 ---
 
@@ -79,7 +79,7 @@ All services start in dependency order with health-checked readiness gates. The 
 | Service    | URL                          |
 |------------|------------------------------|
 | API        | http://localhost:8080/health |
-| Grafana    | http://localhost:3000        |
+| Grafana    | http://localhost:3100        |
 | Prometheus | internal only (no host port) |
 
 ---
@@ -91,7 +91,7 @@ Pre-built server block configs are provided in the `nginx/` directory for both t
 | File | Domain | Upstream |
 |---|---|---|
 | `nginx/hamdi-case-backend.conf` | `hamdi-case-backend.mindmons.com` | `127.0.0.1:8080` |
-| `nginx/hamdi-case-frontend.conf` | `hamdi-case-frontend.mindmons.com` | `127.0.0.1:3001` |
+| `nginx/hamdi-case-frontend.conf` | `hamdi-case-frontend.mindmons.com` | `127.0.0.1:3000` |
 
 ### Install
 
@@ -290,7 +290,7 @@ Every request is assigned a `request_id` (propagated via `X-Request-ID` header) 
 
 **To query backend logs:**
 
-1. Open Grafana at `http://localhost:3000`
+1. Open Grafana at `http://localhost:3100`
 2. Navigate to **Explore**
 3. Run:
 
@@ -399,10 +399,10 @@ make backup
 | `JWT_EXPIRY_HOURS`     | No       | `24`             | Token lifetime in hours                  |
 | `GRAFANA_ADMIN_USER`   | No       | `admin`          | Grafana admin username                   |
 | `GRAFANA_ADMIN_PASSWORD` | Yes    | —                | Grafana admin password                   |
-| `GRAFANA_PORT`         | No       | `3000`           | Host port for Grafana                    |
+| `GRAFANA_PORT`         | No       | `3100`           | Host port for Grafana                    |
 | `BACKUP_CONTAINER`     | No       | `dpp-postgres`   | Docker container name for `pg_dump`      |
 | `RCLONE_REMOTE_NAME`   | No       | —                | Rclone remote for off-site backup sync   |
-| `PUBLIC_BASE_URL`      | No       | `http://localhost:8080` | Base URL embedded in QR codes (e.g. `http://3.120.228.32:3001`) |
+| `PUBLIC_BASE_URL`      | No       | `http://localhost:8080` | Base URL embedded in QR codes (e.g. `http://3.120.228.32:3000`) |
 | `HC_INTERVAL`          | No       | `15s`            | Healthcheck probe interval               |
 | `HC_TIMEOUT`           | No       | `5s`             | Healthcheck timeout                      |
 | `HC_RETRIES`           | No       | `3`              | Healthcheck retry count                  |

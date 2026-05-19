@@ -10,20 +10,20 @@ import (
 type Product struct {
 	ID             uuid.UUID    `gorm:"type:uuid;primaryKey"                                      json:"id"`
 	UUID           string       `gorm:"-"                                                          json:"uuid"`
-	Name           string       `gorm:"not null;index"                                             json:"name"`
-	Brand          string       `gorm:"index"                                                      json:"brand"`
-	Category       string       `gorm:"index"                                                      json:"category"`
-	Country        string       `                                                                  json:"country"`
-	ProductionDate string       `                                                                  json:"productionDate"`
-	Status         string       `gorm:"default:'draft';index"                                      json:"status"`
-	CreatedBy      string       `                                                                  json:"createdBy,omitempty"`
+	Name           string       `gorm:"not null;index;size:200"                                    json:"name"`
+	Brand          string       `gorm:"index;size:255"                                             json:"brand"`
+	Category       string       `gorm:"index;size:255"                                             json:"category"`
+	Country        string       `gorm:"size:255"                                                   json:"country"`
+	ProductionDate string       `gorm:"size:20"                                                    json:"productionDate"`
+	Status         string       `gorm:"default:'draft';index;size:20"                              json:"status"`
+	CreatedBy      string       `gorm:"size:24"                                                    json:"createdBy,omitempty"`
 	Materials      []Material   `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"           json:"materials"`
 	Care           *ProductCare `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"           json:"careInstructions,omitempty"`
 	CreatedAt      time.Time    `gorm:"index"                                                      json:"createdAt"`
 	UpdatedAt      time.Time    `                                                                  json:"updatedAt"`
 	// Legacy fields kept for backward compat — not used by the main API.
-	Description string `json:"description,omitempty"`
-	SKU         string `gorm:"uniqueIndex" json:"sku,omitempty"`
+	Description string `gorm:"size:2000" json:"description,omitempty"`
+	SKU         string `gorm:"uniqueIndex;size:36" json:"sku,omitempty"`
 }
 
 func (p *Product) BeforeCreate(tx *gorm.DB) error {
@@ -49,10 +49,10 @@ func (p *Product) AfterCreate(_ *gorm.DB) error {
 type Material struct {
 	ID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"-"`
 	ProductID  uuid.UUID `gorm:"type:uuid;not null;index" json:"-"`
-	Name       string    `gorm:"not null"             json:"name"`
+	Name       string    `gorm:"not null;size:255"    json:"name"`
 	Percentage float64   `                            json:"percentage"`
 	Recycled   bool      `                            json:"recycled"`
-	Origin     string    `                            json:"origin,omitempty"`
+	Origin     string    `gorm:"size:255"             json:"origin,omitempty"`
 	CreatedAt  time.Time `                            json:"-"`
 	UpdatedAt  time.Time `                            json:"-"`
 }
@@ -68,11 +68,11 @@ func (m *Material) BeforeCreate(tx *gorm.DB) error {
 type ProductCare struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey"             json:"-"`
 	ProductID       uuid.UUID `gorm:"type:uuid;uniqueIndex;not null"   json:"-"`
-	WashTemperature string    `                                         json:"washTemperature,omitempty"`
-	Ironing         string    `                                         json:"ironing,omitempty"`
+	WashTemperature string    `gorm:"size:255"                          json:"washTemperature,omitempty"`
+	Ironing         string    `gorm:"size:255"                          json:"ironing,omitempty"`
 	DryClean        bool      `                                         json:"dryClean"`
 	Bleaching       bool      `                                         json:"bleaching"`
-	Notes           string    `                                         json:"notes,omitempty"`
+	Notes           string    `gorm:"size:1000"                         json:"notes,omitempty"`
 	CreatedAt       time.Time `                                         json:"-"`
 	UpdatedAt       time.Time `                                         json:"-"`
 }

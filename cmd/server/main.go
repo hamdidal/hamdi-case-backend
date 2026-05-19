@@ -77,7 +77,7 @@ func main() {
 func newRouter() *gin.Engine {
 	allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOriginsStr == "" {
-		allowedOriginsStr = "http://localhost:3001"
+		allowedOriginsStr = "http://localhost:3000"
 	}
 	allowedOrigins := strings.Split(allowedOriginsStr, ",")
 
